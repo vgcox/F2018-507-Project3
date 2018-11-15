@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3 as sqlite
 import csv
 import json
 
@@ -6,12 +6,30 @@ import json
 # You can change anything in this file you want as long as you pass the tests
 # and meet the project requirements! You will need to implement several new
 # functions.
-print("test")
+
 # Part 1: Read data from CSV and JSON into a new database called choc.db
 DBNAME = 'choc.db'
 BARSCSV = 'flavors_of_cacao_cleaned.csv'
 COUNTRIESJSON = 'countries.json'
-
+def create_choc_db():
+    try:
+        conn = sqlite.connect(DBNAME)
+        cur = conn.cursor()
+        conn.commit()
+        statement = '''
+            DROP TABLE IF EXISTS 'Bars';
+        '''
+        cur.execute(statement)
+        statement = '''
+            DROP TABLE IF EXISTS 'Countries';
+        '''
+        cur.execute(statement)
+        conn.commit()
+        conn.close()
+        print("Database initiated")
+    except:
+        print("Error, database not created correctly")
+create_choc_db()
 
 # Part 2: Implement logic to process user commands
 def process_command(command):
