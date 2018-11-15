@@ -16,19 +16,19 @@ def create_choc_db():
         conn = sqlite.connect(DBNAME)
         cur = conn.cursor()
         conn.commit()
-        statement = '''
-            DROP TABLE IF EXISTS 'Bars';
-        '''
-        cur.execute(statement)
-        statement = '''
-            DROP TABLE IF EXISTS 'Countries';
-        '''
-        cur.execute(statement)
-        conn.commit()
-        conn.close()
         print("Database initiated")
     except:
         print("Error, database not created correctly")
+    statement = '''
+        DROP TABLE IF EXISTS 'Bars';
+    '''
+    cur.execute(statement)
+    statement = '''
+        DROP TABLE IF EXISTS 'Countries';
+    '''
+    cur.execute(statement)
+    conn.commit()
+    conn.close()
 def populate_choc_db():
     conn = sqlite.connect(DBNAME)
     cur = conn.cursor()
@@ -46,18 +46,20 @@ def populate_choc_db():
         BroadBeanOriginId INTEGER);'''
     cur.execute(statement)
     conn.commit()
+    statement = '''
+    CREATE TABLE Countries (
+        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+        Alpha2 TEXT,
+        Alpha3 TEXT,
+        EnglishName TEXT,
+        Region TEXT,
+        Subregion TEXT,
+        Population INTEGER,
+        Area REAL)'''
+    cur.execute(statement)
+    conn.commit()
+create_choc_db()
 populate_choc_db()
-    # statement = '''
-    # CREATE TABLE Games (
-    #     Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #     Winner INTEGER NOT NULL,
-    #     Loser INTEGER NOT NULL,
-    #     WinnerScore INTEGER NOT NULL,
-    #     LoserScore INTEGER NOT NULL,
-    #     Round INTEGER NOT NULL,
-    #     Time TEXT NOT NULL)'''
-    # cur.execute(statement)
-    # conn.commit()
     # with open("teams.csv") as t:
     #     csvReader = csv.reader(t)
     #     conn = sqlite.connect('coxtori_big10.sqlite')
