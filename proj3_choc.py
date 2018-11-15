@@ -68,18 +68,17 @@ def populate_choc_db():
             VALUES (?,?,?,?,?,?,?,?,?) '''
             cur.execute(statement, (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]))
             conn.commit()
-    # with open("games.csv") as g:
-    #     csvReader = csv.reader(g)
-    #     conn = sqlite.connect('coxtori_big10.sqlite')
-    #     cur = conn.cursor()
-    #     for row in csvReader:
-    #         statement = '''INSERT INTO Games(Winner, Loser, WinnerScore, LoserScore, Round,Time) VALUES(?,?,?,?,?,?)'''
-    #         cur.execute(statement, (row[0], row[1], row[2], row[3], row[4], row[5]))
-    #         conn.commit()
+    with open('countries.json') as f:
+        data =json.loads(f.read())
+        conn = sqlite.connect(DBNAME)
+        cur = conn.cursor()
+        for item in data:
+            statement = '''INSERT INTO Countries (Alpha2, Alpha3, EnglishName, Region, Subregion, Population, Area)
+            VALUES(?,?,?,?,?,?,?)'''
+            cur.execute(statement, (item['alpha2Code'], item['alpha3Code'], item['name'], item['region'], item['subregion'], item['population'], item['area']))
+            conn.commit()
     conn.commit()
     conn.close()
-create_choc_db()
-populate_choc_db()
 # Part 2: Implement logic to process user commands
 def process_command(command):
     return []
