@@ -6,7 +6,7 @@ import json
 # You can change anything in this file you want as long as you pass the tests
 # and meet the project requirements! You will need to implement several new
 # functions.
-
+print("test")
 # Part 1: Read data from CSV and JSON into a new database called choc.db
 DBNAME = 'choc.db'
 BARSCSV = 'flavors_of_cacao_cleaned.csv'
