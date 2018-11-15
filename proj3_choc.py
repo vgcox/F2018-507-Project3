@@ -32,18 +32,7 @@ def create_choc_db():
 def populate_choc_db():
     conn = sqlite.connect(DBNAME)
     cur = conn.cursor()
-    statement = '''
-    CREATE TABLE Bars (
-        Id INTEGER PRIMARY KEY AUTOINCREMENT,
-        Company TEXT,
-        SpecificBeanBarName TEXT,
-        REF TEXT,
-        ReviewDate TEXT,
-        CocoaPercent REAL,
-        CompanyLocationId INTEGER,
-        Rating REAL,
-        BeanType TEXT,
-        BroadBeanOriginId INTEGER);'''
+    statement = '''PRAGMA foregin_keys'''
     cur.execute(statement)
     conn.commit()
     statement = '''
@@ -58,16 +47,22 @@ def populate_choc_db():
         Area REAL)'''
     cur.execute(statement)
     conn.commit()
-    with open("flavors_of_cacao_cleaned.csv") as f:
-        conn = sqlite.connect(DBNAME)
-        cur = conn.cursor()
-        csvReader = csv.reader(f)
-        next(csvReader)
-        for row in csvReader:
-            statement = '''INSERT INTO Bars(Company,SpecificBeanBarName,REF,ReviewDate,CocoaPercent,CompanyLocationId,Rating,BeanType,BroadBeanOriginId)
-            VALUES (?,?,?,?,?,?,?,?,?) '''
-            cur.execute(statement, (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]))
-            conn.commit()
+    statement = '''
+    CREATE TABLE Bars (
+        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+        Company TEXT,
+        SpecificBeanBarName TEXT,
+        REF TEXT,
+        ReviewDate TEXT,
+        CocoaPercent REAL,
+        CompanyLocationId INTEGER,
+        Rating REAL,
+        BeanType TEXT,
+        BroadBeanOriginId INTEGER,
+        FOREIGN KEY (BroadBeanOriginId) REFERENCES Countries (Id),
+        FOREIGN KEY(CompanyLocationId) REFERENCES Countries(Id));'''
+    cur.execute(statement)
+    conn.commit()
     with open('countries.json') as f:
         data =json.loads(f.read())
         conn = sqlite.connect(DBNAME)
@@ -77,8 +72,33 @@ def populate_choc_db():
             VALUES(?,?,?,?,?,?,?)'''
             cur.execute(statement, (item['alpha2Code'], item['alpha3Code'], item['name'], item['region'], item['subregion'], item['population'], item['area']))
             conn.commit()
+    with open("flavors_of_cacao_cleaned.csv") as f:
+        conn = sqlite.connect(DBNAME)
+        cur = conn.cursor()
+        csvReader = csv.reader(f)
+        next(csvReader)
+        for row in csvReader:
+            companyId = row[5]
+            companyStatment = '''SELECT Id FROM Countries WHERE EnglishName="'''+companyId+'''"'''
+            cur.execute(companyStatment)
+            companyResults = cur.fetchall()
+            companyValue = companyResults[0][0]
+            beanId = row[8]
+            beanStatment = '''SELECT Id FROM Countries WHERE EnglishName="'''+beanId+'''"'''
+            cur.execute(beanStatment)
+            beanResults = cur.fetchall()
+            if len(beanResults) > 0:
+                beanValue = beanResults[0][0]
+            else:
+                beanValue = 'NULL'
+            statement = '''INSERT INTO Bars(Company,SpecificBeanBarName,REF,ReviewDate,CocoaPercent, CompanyLocationId, Rating,BeanType, BroadBeanOriginId)
+            VALUES (?,?,?,?,?,?,?,?,?) '''
+            cur.execute(statement, (row[0], row[1], row[2], row[3], row[4], companyValue, row[6], row[7], beanValue))
+            conn.commit()
     conn.commit()
     conn.close()
+create_choc_db()
+populate_choc_db()
 # Part 2: Implement logic to process user commands
 def process_command(command):
     return []
