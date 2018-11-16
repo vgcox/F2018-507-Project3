@@ -101,9 +101,18 @@ create_choc_db()
 populate_choc_db()
 # Part 2: Implement logic to process user commands
 def process_command(command):
-    return []
+    if 'bars' in command:
+        base = statement = '''SELECT Bars.SpecificBeanBarName, Bars.Company, Countries.EnglishName, Bars.Rating,
+        Bars.CocoaPercent, Countries.EnglishName FROM Bars JOIN Countries
+        ON Bars.CompanyLocationId='''
+        params = command.split()
+        options1 = ['sellcountry', 'sellregion', 'sourcecountry', 'sourceregion']
+        opt1 = [i for i in params if i.split('=')[0] in options1][0]
 
 
+        return[]
+# command = input('Enter a command: ')
+# process_command(command)
 def load_help_text():
     with open('help.txt') as f:
         return f.read()
@@ -120,5 +129,5 @@ def interactive_prompt():
             continue
 
 # Make sure nothing runs or prints out when this file is run as a module
-if __name__=="__main__":
-    interactive_prompt()
+# if __name__=="__main__":
+#     interactive_prompt()
