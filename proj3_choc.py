@@ -101,18 +101,59 @@ create_choc_db()
 populate_choc_db()
 # Part 2: Implement logic to process user commands
 def process_command(command):
+    conn = sqlite3.connect(DBNAME)
+    cur = conn.cursor()
     if 'bars' in command:
-        base = statement = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
+        base = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
         Bars.CocoaPercent, C2.EnglishName FROM Bars JOIN Countries AS C1 ON Bars.CompanyLocationId=C1.Id
         JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
-        params = command.split()
-        options1 = ['sellcountry', 'sellregion', 'sourcecountry', 'sourceregion']
-        opt1 = [i for i in params if i.split('=')[0] in options1][0]
-
-
-        return[]
-# command = input('Enter a command: ')
-# process_command(command)
+        comm_list = command.split()[1:]
+        params = [i.split('=')[0] for i in comm_list]
+        # options = ['sellcountry', 'sellregion', 'sourcecountry', 'sourceregion']
+        chosen = lambda params, options: any(i in options for i in params)
+        search_by = []
+        if 'sellcountry' in params:
+            search_by.append('C1.EnglishName')
+        if 'sellregion' in params:
+            search_by.append('C1.Region')
+        if 'sourcecountry' in params:
+            search_by.append('C2.EnglishName')
+        if 'sourceregion' in params:
+            search_by.append('C2.Region')
+        if len(search_by) > 0:
+            for item in comm_list:
+                if 'country' in item or 'region' in item:
+                    place = item.split('=')[1]
+            where = ''' WHERE '''+search_by[0]+'''='''+'''"'''+place+'''"'''
+            base = base+where
+        if 'cocoa' in params:
+            order = ''' ORDER BY Bars.CocoaPercent'''
+            base = base+order
+        else:
+            order = ''' ORDER BY Bars.Rating'''
+            base = base+order
+        if 'bottom' in params:
+            dir = ''' DESC'''
+            base = base+dir
+        else:
+            dir = ''' ASC'''
+            base = base+dir
+        num = '''10'''
+        for item in comm_list:
+            if 'top' in params or 'bottom' in params:
+                num = item.split('=')[1]
+        limit = ''' LIMIT '''+num
+        base = base+limit
+        cur.execute(base)
+        results = cur.fetchall()
+        return results
+    if 'companies' in command:
+        #change for companies params
+        base = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
+        Bars.CocoaPercent, C2.EnglishName FROM Bars JOIN Countries AS C1 ON Bars.CompanyLocationId=C1.Id
+        JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
+command = input('Enter a command: ')
+print(process_command(command))
 def load_help_text():
     with open('help.txt') as f:
         return f.read()
