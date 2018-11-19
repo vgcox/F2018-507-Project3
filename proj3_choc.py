@@ -109,15 +109,14 @@ def process_command(command):
         JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
         comm_list = command.split()[1:]
         params = [i.split('=')[0] for i in comm_list]
-        # options = ['sellcountry', 'sellregion', 'sourcecountry', 'sourceregion']
         chosen = lambda params, options: any(i in options for i in params)
         search_by = []
         if 'sellcountry' in params:
-            search_by.append('C1.EnglishName')
+            search_by.append('C1.Alpha2')
         if 'sellregion' in params:
             search_by.append('C1.Region')
         if 'sourcecountry' in params:
-            search_by.append('C2.EnglishName')
+            search_by.append('C2.Alpha2')
         if 'sourceregion' in params:
             search_by.append('C2.Region')
         if len(search_by) > 0:
@@ -149,9 +148,30 @@ def process_command(command):
         return results
     if 'companies' in command:
         #change for companies params
-        base = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
-        Bars.CocoaPercent, C2.EnglishName FROM Bars JOIN Countries AS C1 ON Bars.CompanyLocationId=C1.Id
-        JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
+        base = '''SELECT Bars.Company, Countries.EnglishName JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+        comm_list = command.split()[1:]
+        params = [i.split('=')[0] for i in comm_list]
+        search_by = []
+        for item in params:
+            if item == 'country':
+                search_by.append('Countries.Alpha2')
+            if item == 'region':
+                search_by.append('Countries.Region')
+        if len(search_by) > 0:
+            for item in comm_list:
+                if 'country' in item or 'region' in item:
+                    place = item.split('=')[1]
+            where = ''' WHERE '''+search_by[0]+'''='''+'''"'''+place+'''"'''
+            base = base+where
+        if 'cocoa' in params:
+            order = ''' ORDER BY Bars.CocoaPercent'''
+            base = base+order
+        if 'bars_sold' in params:
+            cur.execute(base)
+            bars = cur.fetchall()
+
+
+
 command = input('Enter a command: ')
 print(process_command(command))
 def load_help_text():
