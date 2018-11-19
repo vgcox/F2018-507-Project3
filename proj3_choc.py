@@ -1,4 +1,4 @@
-import sqlite3 as sqlite
+import sqlite3
 import csv
 import json
 
@@ -13,7 +13,7 @@ BARSCSV = 'flavors_of_cacao_cleaned.csv'
 COUNTRIESJSON = 'countries.json'
 def create_choc_db():
     try:
-        conn = sqlite.connect(DBNAME)
+        conn = sqlite3.connect(DBNAME)
         cur = conn.cursor()
         conn.commit()
         print("Database initiated")
@@ -30,7 +30,7 @@ def create_choc_db():
     conn.commit()
     conn.close()
 def populate_choc_db():
-    conn = sqlite.connect(DBNAME)
+    conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
     statement = '''PRAGMA foregin_keys'''
     cur.execute(statement)
@@ -65,7 +65,7 @@ def populate_choc_db():
     conn.commit()
     with open('countries.json') as f:
         data =json.loads(f.read())
-        conn = sqlite.connect(DBNAME)
+        conn = sqlite3.connect(DBNAME)
         cur = conn.cursor()
         for item in data:
             statement = '''INSERT INTO Countries (Alpha2, Alpha3, EnglishName, Region, Subregion, Population, Area)
@@ -73,7 +73,7 @@ def populate_choc_db():
             cur.execute(statement, (item['alpha2Code'], item['alpha3Code'], item['name'], item['region'], item['subregion'], item['population'], item['area']))
             conn.commit()
     with open("flavors_of_cacao_cleaned.csv") as f:
-        conn = sqlite.connect(DBNAME)
+        conn = sqlite3.connect(DBNAME)
         cur = conn.cursor()
         csvReader = csv.reader(f)
         next(csvReader)
@@ -102,9 +102,9 @@ populate_choc_db()
 # Part 2: Implement logic to process user commands
 def process_command(command):
     if 'bars' in command:
-        base = statement = '''SELECT Bars.SpecificBeanBarName, Bars.Company, Countries.EnglishName, Bars.Rating,
-        Bars.CocoaPercent, Countries.EnglishName FROM Bars JOIN Countries
-        ON Bars.CompanyLocationId='''
+        base = statement = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
+        Bars.CocoaPercent, C2.EnglishName FROM Bars JOIN Countries AS C1 ON Bars.CompanyLocationId=C1.Id
+        JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
         params = command.split()
         options1 = ['sellcountry', 'sellregion', 'sourcecountry', 'sourceregion']
         opt1 = [i for i in params if i.split('=')[0] in options1][0]
