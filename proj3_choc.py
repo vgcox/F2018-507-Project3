@@ -103,7 +103,7 @@ populate_choc_db()
 def process_command(command):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
-    if 'bars' in command:
+    if command.split()[0] == 'bars':
         base = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
         Bars.CocoaPercent, C2.EnglishName FROM Bars JOIN Countries AS C1 ON Bars.CompanyLocationId=C1.Id
         JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
@@ -146,9 +146,9 @@ def process_command(command):
         cur.execute(base)
         results = cur.fetchall()
         return results
-    if 'companies' in command:
+    if command.split()[0] == 'companies':
         #change for companies params
-        base = '''SELECT Bars.Company, Countries.EnglishName JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+        base = '''SELECT Bars.Company, Countries.EnglishName, Bars.Rating AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
         comm_list = command.split()[1:]
         params = [i.split('=')[0] for i in comm_list]
         search_by = []
@@ -165,10 +165,45 @@ def process_command(command):
             base = base+where
         if 'cocoa' in params:
             order = ''' ORDER BY Bars.CocoaPercent'''
-            base = base+order
-        if 'bars_sold' in params:
+            union = ''' UNION ALL SELECT Bars.CompanyLocationId, Countries.EnglishName, Bars.CocoaPercent FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+            base = base+union+order
+        elif 'bars_sold' in params:
             cur.execute(base)
             bars = cur.fetchall()
+            companies = {}
+            for item in bars:
+                if item[0] not in companies:
+                    companies[item[0]] = 1
+                else:
+                    companies[item[0]] += 1
+            temp_col = '''ALTER TABLE Bars ADD numBars INTEGER'''
+            cur.execute(temp_col)
+            conn.commit()
+            for k,v in companies.items():
+                insert_col = '''UPDATE Bars SET numBars=? WHERE Company=?'''
+                cur.execute(insert_col, (v,k))
+                conn.commit()
+            order = ''' ORDER BY Bars.numBars'''
+            union = ''' UNION ALL SELECT Bars.Company, Countries.EnglishName, Bars.numBars FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id WHERE Bars.numBars > 4'''
+            base = base+union+order
+        else:
+            order = ''' ORDER BY Bars.Rating'''
+        if 'bottom' in params:
+            dir = ''' DESC'''
+            base = base+dir
+        else:
+            dir = ''' ASC'''
+            base = base+dir
+        num = '''10'''
+        for item in comm_list:
+            if 'top' in params or 'bottom' in params:
+                num = item.split('=')[1]
+        limit = ''' LIMIT '''+num
+        base = base+limit
+        # cur.execute(base)
+        results = cur.fetchall()
+        return base
+
 
 
 
