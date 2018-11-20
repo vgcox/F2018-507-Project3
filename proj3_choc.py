@@ -148,7 +148,23 @@ def process_command(command):
         return results
     if command.split()[0] == 'companies':
         #change for companies params
-        base = '''SELECT Bars.Company, Countries.EnglishName, Bars.Rating AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+        base = '''SELECT Bars.Company, Countries.EnglishName, Bars.numBars AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+        temp = '''SELECT * FROM Bars'''
+        cur.execute(temp)
+        bars = cur.fetchall()
+        companies = {}
+        for item in bars:
+            if item[1] not in companies:
+                companies[item[1]] = 1
+            else:
+                companies[item[1]] += 1
+        temp_col = '''ALTER TABLE Bars ADD numBars INTEGER'''
+        cur.execute(temp_col)
+        conn.commit()
+        for k,v in companies.items():
+            insert_col = '''UPDATE Bars SET numBars=? WHERE Company=?'''
+            cur.execute(insert_col, (v,k))
+            conn.commit()
         comm_list = command.split()[1:]
         params = [i.split('=')[0] for i in comm_list]
         search_by = []
@@ -168,23 +184,8 @@ def process_command(command):
             union = ''' UNION ALL SELECT Bars.CompanyLocationId, Countries.EnglishName, Bars.CocoaPercent FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
             base = base+union+order
         elif 'bars_sold' in params:
-            cur.execute(base)
-            bars = cur.fetchall()
-            companies = {}
-            for item in bars:
-                if item[0] not in companies:
-                    companies[item[0]] = 1
-                else:
-                    companies[item[0]] += 1
-            temp_col = '''ALTER TABLE Bars ADD numBars INTEGER'''
-            cur.execute(temp_col)
-            conn.commit()
-            for k,v in companies.items():
-                insert_col = '''UPDATE Bars SET numBars=? WHERE Company=?'''
-                cur.execute(insert_col, (v,k))
-                conn.commit()
             order = ''' ORDER BY Bars.numBars'''
-            union = ''' UNION ALL SELECT Bars.Company, Countries.EnglishName, Bars.numBars FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id WHERE Bars.numBars > 4'''
+            union = ''' UNION ALL SELECT Bars.Company, Countries.EnglishName, Bars.numBars FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
             base = base+union+order
         else:
             order = ''' ORDER BY Bars.Rating'''
@@ -200,9 +201,9 @@ def process_command(command):
                 num = item.split('=')[1]
         limit = ''' LIMIT '''+num
         base = base+limit
-        # cur.execute(base)
+        cur.execute(base)
         results = cur.fetchall()
-        return base
+        return results
 
 
 
