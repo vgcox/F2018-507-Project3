@@ -74,6 +74,7 @@ def populate_choc_db():
             conn.commit()
     with open("flavors_of_cacao_cleaned.csv") as f:
         conn = sqlite3.connect(DBNAME)
+        conn.text_factory = str
         cur = conn.cursor()
         csvReader = csv.reader(f)
         next(csvReader)
@@ -99,15 +100,35 @@ def populate_choc_db():
     conn.close()
 create_choc_db()
 populate_choc_db()
+conn = sqlite3.connect(DBNAME)
+cur = conn.cursor()
+convert = '''SELECT CAST(CocoaPercent AS decimal(0,2)) FROM Bars'''
+cur.execute(convert)
+results = cur.fetchall()
+id = 0
+for result in results:
+    id+=1
+    sql = '''UPDATE Bars SET CocoaPercent="'''+str(result[0]/100)+'''" WHERE Id="'''+str(id)+'''"'''
+    cur.execute(sql)
+    conn.commit()
 # Part 2: Implement logic to process user commands
 def process_command(command):
     conn = sqlite3.connect(DBNAME)
     cur = conn.cursor()
+    comm_list = command.split()[1:]
+    num = ''' 10'''
+    for item in comm_list:
+        if 'top' in item or 'bottom' in item:
+            num = item.split('=')[1]
+    limit = ''' LIMIT '''+num
+    if 'bottom' in command:
+        dir = ''' ASC'''
+    else:
+        dir = ''' DESC'''
     if command.split()[0] == 'bars':
         base = '''SELECT Bars.SpecificBeanBarName, Bars.Company, C1.EnglishName, Bars.Rating,
         Bars.CocoaPercent, C2.EnglishName FROM Bars JOIN Countries AS C1 ON Bars.CompanyLocationId=C1.Id
         JOIN Countries AS C2 ON Bars.BroadBeanOriginId=C2.Id'''
-        comm_list = command.split()[1:]
         params = [i.split('=')[0] for i in comm_list]
         chosen = lambda params, options: any(i in options for i in params)
         search_by = []
@@ -131,85 +152,80 @@ def process_command(command):
         else:
             order = ''' ORDER BY Bars.Rating'''
             base = base+order
-        if 'bottom' in params:
-            dir = ''' DESC'''
-            base = base+dir
-        else:
-            dir = ''' ASC'''
-            base = base+dir
-        num = '''10'''
-        for item in comm_list:
-            if 'top' in params or 'bottom' in params:
-                num = item.split('=')[1]
-        limit = ''' LIMIT '''+num
-        base = base+limit
+        base = base+dir+limit
         cur.execute(base)
         results = cur.fetchall()
         return results
     if command.split()[0] == 'companies':
-        #change for companies params
-        base = '''SELECT Bars.Company, Countries.EnglishName, Bars.numBars AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
-        temp = '''SELECT * FROM Bars'''
-        cur.execute(temp)
-        bars = cur.fetchall()
-        companies = {}
-        for item in bars:
-            if item[1] not in companies:
-                companies[item[1]] = 1
-            else:
-                companies[item[1]] += 1
-        temp_col = '''ALTER TABLE Bars ADD numBars INTEGER'''
-        cur.execute(temp_col)
-        conn.commit()
-        for k,v in companies.items():
-            insert_col = '''UPDATE Bars SET numBars=? WHERE Company=?'''
-            cur.execute(insert_col, (v,k))
-            conn.commit()
         comm_list = command.split()[1:]
-        params = [i.split('=')[0] for i in comm_list]
+        select = '''SELECT Bars.Company, Countries.EnglishName, Bars.Rating AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+        rest = ''' GROUP BY Bars.Company HAVING Count(SpecificBeanBarName) > 4 ORDER BY Bars.Rating'''
+        if 'cocoa' in command:
+            select = '''SELECT Bars.Company, Countries.EnglishName, Bars.CocoaPercent AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+            rest =''' GROUP BY Bars.Company HAVING Count(SpecificBeanBarName) > 4 ORDER BY Bars.CocoaPercent'''
+        elif 'bars_sold' in command:
+            select = '''SELECT Bars.Company, Countries.EnglishName, Count(Company) AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+            rest = ''' GROUP BY Bars.Company HAVING Count(SpecificBeanBarName) > 4 ORDER BY Count(Company)'''
         search_by = []
-        for item in params:
-            if item == 'country':
-                search_by.append('Countries.Alpha2')
-            if item == 'region':
-                search_by.append('Countries.Region')
+        if 'country' in command:
+            search_by.append('Countries.Alpha2')
+        if 'region' in command:
+            search_by.append('Countries.Region')
         if len(search_by) > 0:
             for item in comm_list:
                 if 'country' in item or 'region' in item:
                     place = item.split('=')[1]
             where = ''' WHERE '''+search_by[0]+'''='''+'''"'''+place+'''"'''
-            base = base+where
-        if 'cocoa' in params:
-            order = ''' ORDER BY Bars.CocoaPercent'''
-            union = ''' UNION ALL SELECT Bars.CompanyLocationId, Countries.EnglishName, Bars.CocoaPercent FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
-            base = base+union+order
-        elif 'bars_sold' in params:
-            order = ''' ORDER BY Bars.numBars'''
-            union = ''' UNION ALL SELECT Bars.Company, Countries.EnglishName, Bars.numBars FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
-            base = base+union+order
-        else:
-            order = ''' ORDER BY Bars.Rating'''
-        if 'bottom' in params:
-            dir = ''' DESC'''
-            base = base+dir
-        else:
+            select = select + where
+        if 'bottom' in command:
             dir = ''' ASC'''
-            base = base+dir
-        num = '''10'''
-        for item in comm_list:
-            if 'top' in params or 'bottom' in params:
-                num = item.split('=')[1]
-        limit = ''' LIMIT '''+num
-        base = base+limit
-        cur.execute(base)
+            rest = rest+dir+''', Bars.Company DESC'''
+        else:
+            dir = ''' DESC'''
+            rest = rest+dir+''', Bars.Company DESC'''
+        sql = select+rest+limit
+        cur.execute(sql)
         results = cur.fetchall()
         return results
-
-
-
-
-command = input('Enter a command: ')
-print(process_command(command))
+    if command.split()[0] == 'countries':
+        select = '''SELECT Countries.EnglishName, Countries.Region, Bars.Rating AS 'Rating' FROM Bars JOIN Countries'''
+        if 'sources' in command:
+            country = ''' ON Bars.BroadBeanOriginId=Countries.Id GROUP BY Bars.BroadBeanOriginId HAVING Count(Bars.SpecificBeanBarName) > 4'''
+        else:
+            country = ''' ON Bars.CompanyLocationId=Countries.Id GROUP BY Bars.CompanyLocationId HAVING Count(Bars.SpecificBeanBarName) > 4'''
+        if 'cocoa' in command:
+            select = '''SELECT Countries.EnglishName, Countries.Region, Bars.CocoaPercent AS ' Cocoa Percentage' FROM Bars JOIN Countries'''
+            order = ''' ORDER BY Bars.CocoaPercent'''
+        elif 'bars_sold' in command:
+            select ='''SELECT Countries.EnglishName, Countries.Region, Count(Bars.Company) AS "Bars Sold" FROM Bars JOIN Countries'''
+            order = ''' ORDER BY Count(Company)'''
+        else:
+            order = ''' ORDER BY Bars.Rating'''
+        sql = select+country+order+dir+limit
+        cur.execute(sql)
+        results = cur.fetchall()
+        return results
+    if command.split()[0] == 'regions':
+        comm_list = command.split()[1:]
+        select = '''SELECT Countries.Region, Bars.Rating AS 'Rating' FROM Countries JOIN Bars'''
+        if 'sources' in command:
+            country = ''' ON Countries.Id=Bars.BroadBeanOriginId GROUP BY Bars.BroadBeanOriginId HAVING Count(Bars.SpecificBeanBarName) > 4'''
+        else:
+            country = ''' ON Bars.CompanyLocationId=Countries.Id GROUP BY Bars.CompanyLocationId HAVING Count(Bars.SpecificBeanBarName) > 4'''
+        if 'cocoa' in command:
+            select = '''SELECT Countries.Region, Bars.CocoaPercent AS 'Cocoa Percentage FROM Bars JOIN Countries'''
+            order = ''' ORDER BY Bars.CocoaPercent'''
+        elif 'bars_sold' in command:
+            select ='''SELECT Countries.Region, Count(Bars.Company) AS "Bars Sold" FROM Bars JOIN Countries'''
+            order = ''' ORDER BY Count(Company)'''
+        else:
+            order = '''ORDER BY Bars.Rating'''
+        sql = select+country+order+dir+limit
+        cur.execute(sql)
+        results = cur.fetchall()
+        return results
+# command = input('Enter a command: ')
+# process_command(command))
 def load_help_text():
     with open('help.txt') as f:
         return f.read()
@@ -217,14 +233,28 @@ def load_help_text():
 # Part 3: Implement interactive prompt. We've started for you!
 def interactive_prompt():
     help_text = load_help_text()
-    response = ''
-    while response != 'exit':
+    flag = True
+    while flag == True:
         response = input('Enter a command: ')
-
         if response == 'help':
             print(help_text)
             continue
+        try:
+            results_list = process_command(response)
+            out = ''
+            for sets in results_list:
+                for item in sets:
+                    if str(item)[0] == '0':
+                        item = str(int(float(item)*100))+"%"
+                    out+='{}    '.format(item)
+                out+="\n"
+            print(out)
+        except:
+            if response == 'exit':
+                flag = False
+            else:
+                print("Sorry, the command you entered was not valid.\nPlease try again or type 'help' to see instructions for valid commands")
 
 # Make sure nothing runs or prints out when this file is run as a module
-# if __name__=="__main__":
-#     interactive_prompt()
+if __name__=="__main__":
+    interactive_prompt()
