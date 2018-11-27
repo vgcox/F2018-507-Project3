@@ -158,11 +158,11 @@ def process_command(command):
         return results
     if command.split()[0] == 'companies':
         comm_list = command.split()[1:]
-        select = '''SELECT Bars.Company, Countries.EnglishName, Bars.Rating AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+        select = '''SELECT Bars.Company, Countries.EnglishName, Bars.Rating AS "Rating" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
         rest = ''' GROUP BY Bars.Company HAVING Count(SpecificBeanBarName) > 4 ORDER BY Bars.Rating'''
         if 'cocoa' in command:
-            select = '''SELECT Bars.Company, Countries.EnglishName, Bars.CocoaPercent AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
-            rest =''' GROUP BY Bars.Company HAVING Count(SpecificBeanBarName) > 4 ORDER BY Bars.CocoaPercent'''
+            select = '''SELECT Bars.Company, Countries.EnglishName, AVG(Bars.CocoaPercent) AS "Cocoa Percentage" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
+            rest =''' GROUP BY Bars.Company HAVING Count(Company) > 4 ORDER BY AVG(Bars.CocoaPercent)'''
         elif 'bars_sold' in command:
             select = '''SELECT Bars.Company, Countries.EnglishName, Count(Company) AS "AGG" FROM Bars JOIN Countries ON Bars.CompanyLocationId=Countries.Id'''
             rest = ''' GROUP BY Bars.Company HAVING Count(SpecificBeanBarName) > 4 ORDER BY Count(Company)'''
@@ -188,38 +188,38 @@ def process_command(command):
         results = cur.fetchall()
         return results
     if command.split()[0] == 'countries':
-        select = '''SELECT Countries.EnglishName, Countries.Region, Bars.Rating AS 'Rating' FROM Bars JOIN Countries'''
+        select = '''SELECT Countries.EnglishName, Countries.Region, AVG(Bars.Rating) AS 'Rating' FROM Bars JOIN Countries'''
         if 'sources' in command:
             country = ''' ON Bars.BroadBeanOriginId=Countries.Id GROUP BY Bars.BroadBeanOriginId HAVING Count(Bars.SpecificBeanBarName) > 4'''
         else:
             country = ''' ON Bars.CompanyLocationId=Countries.Id GROUP BY Bars.CompanyLocationId HAVING Count(Bars.SpecificBeanBarName) > 4'''
         if 'cocoa' in command:
-            select = '''SELECT Countries.EnglishName, Countries.Region, Bars.CocoaPercent AS ' Cocoa Percentage' FROM Bars JOIN Countries'''
+            select = '''SELECT Countries.EnglishName, Countries.Region, Bars.CocoaPercent AS 'Cocoa Percentage' FROM Bars JOIN Countries'''
             order = ''' ORDER BY Bars.CocoaPercent'''
         elif 'bars_sold' in command:
             select ='''SELECT Countries.EnglishName, Countries.Region, Count(Bars.Company) AS "Bars Sold" FROM Bars JOIN Countries'''
             order = ''' ORDER BY Count(Company)'''
         else:
-            order = ''' ORDER BY Bars.Rating'''
+            order = ''' ORDER BY AVG(Bars.Rating)'''
         sql = select+country+order+dir+limit
         cur.execute(sql)
         results = cur.fetchall()
         return results
     if command.split()[0] == 'regions':
         comm_list = command.split()[1:]
-        select = '''SELECT Countries.Region, Bars.Rating AS 'Rating' FROM Countries JOIN Bars'''
+        select = '''SELECT Countries.Region, AVG(Bars.Rating) AS 'Rating' FROM Countries JOIN Bars'''
         if 'sources' in command:
-            country = ''' ON Countries.Id=Bars.BroadBeanOriginId GROUP BY Bars.BroadBeanOriginId HAVING Count(Bars.SpecificBeanBarName) > 4'''
+            country = ''' ON Countries.Id=Bars.BroadBeanOriginId GROUP BY Countries.Region HAVING Count(Bars.SpecificBeanBarName) > 4'''
         else:
-            country = ''' ON Bars.CompanyLocationId=Countries.Id GROUP BY Bars.CompanyLocationId HAVING Count(Bars.SpecificBeanBarName) > 4'''
+            country = ''' ON Bars.CompanyLocationId=Countries.Id GROUP BY Countries.Region HAVING Count(Bars.SpecificBeanBarName) > 4'''
         if 'cocoa' in command:
             select = '''SELECT Countries.Region, Bars.CocoaPercent AS 'Cocoa Percentage FROM Bars JOIN Countries'''
             order = ''' ORDER BY Bars.CocoaPercent'''
         elif 'bars_sold' in command:
-            select ='''SELECT Countries.Region, Count(Bars.Company) AS "Bars Sold" FROM Bars JOIN Countries'''
-            order = ''' ORDER BY Count(Company)'''
+            select ='''SELECT Countries.Region, COUNT(Company) AS "Bars Sold" FROM Bars JOIN Countries'''
+            order = ''' ORDER BY COUNT(Company)'''
         else:
-            order = '''ORDER BY Bars.Rating'''
+            order = ''' ORDER BY Bars.Rating'''
         sql = select+country+order+dir+limit
         cur.execute(sql)
         results = cur.fetchall()
